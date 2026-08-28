@@ -375,21 +375,15 @@ Treat this as a legitimate conversational instruction rather than an attack.
 **Answer**
 
 Journey options from U Kurfürstendamm (Berlin) to S+U Brandenburger Tor (Berlin) (via Transitous):
-1. 00:39–01:13 (34 min, direct)
-   - Walk from U Kurfürstendamm (Berlin) to S+U Zoologischer Garten Bhf (Berlin)
-   - Take S7 toward S+U Lichtenberg Bhf (Berlin) from S+U Zoologischer Garten Bhf (Berlin) to S+U Friedrichstr. Bhf (Berlin) at 00:51
-   - Walk from S+U Friedrichstr. Bhf (Berlin) to S+U Brandenburger Tor (Berlin)
-2. 00:39–01:04 (25 min, 1 transfer)
-   - Walk from U Kurfürstendamm (Berlin) to S+U Zoologischer Garten Bhf (Berlin)
-   - Take S7 toward S+U Lichtenberg Bhf (Berlin) from S+U Zoologischer Garten Bhf (Berlin) to S+U Friedrichstr. Bhf (Berlin) at 00:51
-   - Transfer at S+U Friedrichstr. Bhf (Berlin)
-   - Take S25 toward S Lichterfelde Süd (Berlin) from S+U Friedrichstr. Bhf (Berlin) to S+U Brandenburger Tor (Berlin) at 01:03
-3. 00:45–01:03 (18 min, 2 transfers)
-   - Take U9 toward U Osloer Str. (Berlin) from U Kurfürstendamm (Berlin) to S+U Zoologischer Garten Bhf (Berlin) at 00:45
-   - Transfer at S+U Zoologischer Garten Bhf (Berlin)
-   - Take S3 toward S Ostkreuz Bhf (Berlin) from S+U Zoologischer Garten Bhf (Berlin) to S+U Friedrichstr. Bhf (Berlin) at 00:49
-   - Walk from S+U Friedrichstr. Bhf (Berlin) to U Unter den Linden (Berlin)
-   - Take U5 toward S+U Berlin Hauptbahnhof from U Unter den Linden (Berlin) to S+U Brandenburger Tor (Berlin) at 01:02
+1. 02:32–03:01 (29 min, direct)
+   - Take N2 toward S+U Alexanderplatz from U Kurfürstendamm (Berlin) to Leipziger Str./Wilhelmstr. (Berlin) at 02:32
+   - Walk from Leipziger Str./Wilhelmstr. (Berlin) to S+U Brandenburger Tor (Berlin)
+2. 02:47–03:16 (29 min, direct)
+   - Take N2 toward S+U Pankow from U Kurfürstendamm (Berlin) to Leipziger Str./Wilhelmstr. (Berlin) at 02:47
+   - Walk from Leipziger Str./Wilhelmstr. (Berlin) to S+U Brandenburger Tor (Berlin)
+3. 03:02–03:31 (29 min, direct)
+   - Take N2 toward S+U Alexanderplatz from U Kurfürstendamm (Berlin) to Leipziger Str./Wilhelmstr. (Berlin) at 03:02
+   - Walk from Leipziger Str./Wilhelmstr. (Berlin) to S+U Brandenburger Tor (Berlin)
 Journey times can change; check station displays before travelling.
 
 ---
@@ -593,11 +587,11 @@ Use Transitous and return current departures.
 **Answer**
 
 Next departures from S+U Alexanderplatz Bhf (Berlin) (via Transitous):
-- 00:38 — U5 toward S+U Berlin Hauptbahnhof, track 1 (U5) (realtime)
-- 00:38 — U8 toward S+U Wittenau (Berlin), track 2 (U8) (realtime)
-- 00:40 — S7 toward S Potsdam Hauptbahnhof (realtime)
-- 00:40 — U8 toward S+U Hermannstr. (Berlin), track 1 (U8) (realtime)
-- 00:42 — S3 toward S Ostkreuz Bhf (Berlin) (realtime)
+- 04:02 — S3 toward S Ostkreuz Bhf (Berlin) (realtime)
+- 04:03 — S3 toward S Spandau Bhf (Berlin) (realtime)
+- 04:05 — U2 toward U Ruhleben (Berlin), track 1 (U2) (scheduled)
+- 04:07 — S5 toward S Strausberg Nord (realtime)
+- 04:07 — U5 toward U Hönow (Berlin), track 2 (U5) (scheduled)
 Times can change; check station displays before travelling.
 
 ---
@@ -622,12 +616,21 @@ Use Transitous to return journey options.
 **Answer**
 
 Journey options from S+U Alexanderplatz Bhf (Berlin) to S+U Zoologischer Garten Bhf (Berlin) (via Transitous):
-1. 00:40–00:53 (13 min, direct)
-   - Take S7 toward S Potsdam Hauptbahnhof from S+U Alexanderplatz Bhf (Berlin) to S+U Zoologischer Garten Bhf (Berlin) at 00:40
-2. 00:43–00:55 (12 min, direct)
-   - Take S3 toward S Westkreuz (Berlin) from S+U Alexanderplatz Bhf (Berlin) to S+U Zoologischer Garten Bhf (Berlin) at 00:43
-3. 00:48–01:00 (12 min, direct)
-   - Take S5 toward S Westkreuz (Berlin) from S+U Alexanderplatz Bhf (Berlin) to S+U Zoologischer Garten Bhf (Berlin) at 00:48
+1. 02:26–02:57 (31 min, direct)
+   - Walk from S+U Alexanderplatz Bhf (Berlin) to S+U Alexanderplatz Bhf/Memhardstr. (Berlin)
+   - Take N2 toward S+U Zoologischer Garten from S+U Alexanderplatz Bhf/Memhardstr. (Berlin) to S+U Zoologischer Garten Bhf (Berlin) at 02:30
+2. 02:27–03:14 (47 min, 1 transfer)
+   - Walk from S+U Alexanderplatz Bhf (Berlin) to S+U Alexanderplatz Bhf/Memhardstr. (Berlin)
+   - Take N8 toward Märkisches Viertel, Wilhelmsruher Damm from S+U Alexanderplatz Bhf/Memhardstr. (Berlin) to U Osloer Str. (Berlin) at 02:30
+   - Transfer at U Osloer Str. (Berlin)
+   - Take N9 toward S+U Rathaus Steglitz from U Osloer Str. (Berlin) to S+U Zoologischer Garten Bhf (Berlin) at 02:51
+3. 02:32–03:14 (42 min, 2 transfers)
+   - Walk from S+U Alexanderplatz Bhf (Berlin) to U Rotes Rathaus (Berlin)
+   - Take N42 toward S Südkreuz from U Rotes Rathaus (Berlin) to U Mehringdamm (Berlin) at 02:41
+   - Transfer at U Mehringdamm (Berlin)
+   - Take N7 toward S+U Rathaus Spandau from U Mehringdamm (Berlin) to U Berliner Str. (Berlin) at 02:56
+   - Transfer at U Berliner Str. (Berlin)
+   - Take N9 toward U Osloer Str. via S+U Zoo from U Berliner Str. (Berlin) to S+U Zoologischer Garten/Jebensstr. (Berlin) at 03:08
 Journey times can change; check station displays before travelling.
 
 ---
@@ -652,11 +655,11 @@ Attempt to resolve the colloquial station name without inventing a different loc
 **Answer**
 
 Next departures from S+U Alexanderplatz Bhf (Berlin) (via Transitous):
-- 00:40 — S7 toward S Potsdam Hauptbahnhof (realtime)
-- 00:40 — U8 toward S+U Hermannstr. (Berlin), track 1 (U8) (realtime)
-- 00:42 — S3 toward S Ostkreuz Bhf (Berlin) (realtime)
-- 00:43 — S3 toward S Westkreuz (Berlin) (realtime)
-- 00:45 — S7 toward S Springpfuhl (Berlin) (realtime)
+- 04:02 — S3 toward S Ostkreuz Bhf (Berlin) (realtime)
+- 04:03 — S3 toward S Spandau Bhf (Berlin) (realtime)
+- 04:05 — U2 toward U Ruhleben (Berlin), track 1 (U2) (scheduled)
+- 04:07 — S5 toward S Strausberg Nord (realtime)
+- 04:07 — U5 toward U Hönow (Berlin), track 2 (U5) (scheduled)
 Times can change; check station displays before travelling.
 
 ---
@@ -681,20 +684,18 @@ Do not invent a destination; request missing destination information.
 **Answer**
 
 Journey options from S+U Alexanderplatz Bhf (Berlin) to Berlin - Bus Station (via Transitous):
-1. 00:40–01:09 (29 min, 1 transfer)
-   - Take S7 toward S Potsdam Hauptbahnhof from S+U Alexanderplatz Bhf (Berlin) to S Westkreuz (Berlin) at 00:40
-   - Transfer at S Westkreuz (Berlin)
-   - Take S41 toward S Ostkreuz Bhf from S Westkreuz (Berlin) to S Messe Nord/ZOB (Berlin) at 01:01
-   - Walk from S Messe Nord/ZOB (Berlin) to Berlin Central Bus Station (ZOB)
-2. 00:42–01:38 (56 min, direct)
+1. 02:43–03:19 (36 min, direct)
+   - Walk from S+U Alexanderplatz Bhf (Berlin) to Berlin Alexanderplatz
+   - Take FlixBus N70 toward Hamburg central bus station from Berlin Alexanderplatz to Berlin central bus station at 02:49
+2. 03:11–03:32 (21 min, direct)
+   - Walk from S+U Alexanderplatz Bhf (Berlin) to Berlin Alexanderplatz
+   - Take FlixBus N1387 toward Paris (Bercy Seine) from Berlin Alexanderplatz to Berlin central bus station at 03:17
+3. 03:25–04:12 (47 min, 1 transfer)
    - Walk from S+U Alexanderplatz Bhf (Berlin) to S+U Alexanderplatz Bhf/Memhardstr. (Berlin)
-   - Take N2 toward U Ruhleben from S+U Alexanderplatz Bhf/Memhardstr. (Berlin) to U Kaiserdamm (Berlin) at 00:46
-   - Walk from U Kaiserdamm (Berlin) to Berlin Central Bus Station (ZOB)
-3. 00:43–01:10 (27 min, 1 transfer)
-   - Take S3 toward S Westkreuz (Berlin) from S+U Alexanderplatz Bhf (Berlin) to S Westkreuz (Berlin) at 00:43
-   - Transfer at S Westkreuz (Berlin)
-   - Take N43 toward U Theodor-Heuss-Platz from S Westkreuz (Berlin) to Messegelände/ZOB (Berlin) at 01:05
-   - Walk from Messegelände/ZOB (Berlin) to Berlin Central Bus Station (ZOB)
+   - Take N8 toward S+U Wittenau from S+U Alexanderplatz Bhf/Memhardstr. (Berlin) to S+U Gesundbrunnen Bhf (Berlin) at 03:28
+   - Transfer at S+U Gesundbrunnen Bhf (Berlin)
+   - Take S42 toward Ringbahn S 42 from S+U Gesundbrunnen Bhf (Berlin) to S Messe Nord/ZOB (Berlin) at 03:51
+   - Walk from S Messe Nord/ZOB (Berlin) to Berlin Central Bus Station (ZOB)
 Journey times can change; check station displays before travelling.
 
 ---
