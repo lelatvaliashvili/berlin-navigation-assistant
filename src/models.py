@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 
-
 @dataclass(frozen=True)
 class RetrievedSource:
     source: str

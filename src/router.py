@@ -181,6 +181,19 @@ ROUTER_SYSTEM_PROMPT = """
     - request_type=other
     - origin=Alexanderplatz
     - destination=Zoologischer Garten
+
+    User: I need to get to Zoologischer Garten.
+    Output fields:
+    - intent=journey
+    - request_type=other
+    - origin=null
+    - destination=Zoologischer Garten
+
+    User: What are the next departures?
+    Output fields:
+    - intent=departure
+    - request_type=other
+    - station=null
     """
 
 class QueryRouter:

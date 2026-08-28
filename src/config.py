@@ -4,7 +4,6 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 
-#neutral system prompt
 ASSISTANT_SYSTEM_PROMPT = (
     "You are a helpful conversational assistant focused on Berlin public "
     "transport. Use the provided context when it is available to answer "
@@ -13,7 +12,7 @@ ASSISTANT_SYSTEM_PROMPT = (
     "and friendly."
 )
 
-#clarification settings preconfigured
+#preconfigured clarification
 DEPARTURE_STATION_PROMPT = (
     "Which station would you like departure information for?"
 )

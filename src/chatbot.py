@@ -26,6 +26,8 @@ class BVGAssistant:
         guarded: bool = False,
         enable_injection_guard: bool = False,
         enable_completeness_guard: bool = False,
+        enable_groundedness_guard: bool = False,
+        enable_transit_guard: bool = False,
     ) -> None:
         self.llm = create_chat_model()
         self.retriever = BVGRetriever()
@@ -34,10 +36,14 @@ class BVGAssistant:
         self.state = ConversationState()
         self.injection_guard = None
         self.completeness_guard = None
+        self.groundedness_guard = None
+        self.transit_guard = None
 
         if guarded:
             enable_injection_guard = True
             enable_completeness_guard = True
+            enable_groundedness_guard = True
+            enable_transit_guard = True
 
         if enable_injection_guard:
             from src.guardrails import PromptInjectionGuard
@@ -46,6 +52,14 @@ class BVGAssistant:
         if enable_completeness_guard:
             from src.guardrails import InformationCompletenessGuard
             self.completeness_guard = InformationCompletenessGuard()
+
+        if enable_groundedness_guard:
+            from src.guardrails import GroundednessGuard
+            self.groundedness_guard = GroundednessGuard()
+
+        if enable_transit_guard:
+            from src.guardrails import TransitPreconditionGuard
+            self.transit_guard = TransitPreconditionGuard()
 
     def classify(self, question: str) -> RouteDecision:
         return self.router.route(self._question_with_context(question)) #based on context
@@ -56,11 +70,16 @@ class BVGAssistant:
     ) -> AssistantResponse:
         if self.injection_guard is not None:
             injection = self.injection_guard.check(question)
+
             if injection.blocked:
                 return AssistantResponse(
                     answer=self.injection_guard.refusal,
                     route="knowledge",
                     guardrail_triggers=["prompt_injection_authority"],
+                    guardrail_details={
+                        "reason": injection.reason,
+                        "attack_type": injection.attack_type,
+                    },
                 )
 
         decision = decision or self.classify(question)
@@ -87,6 +106,26 @@ class BVGAssistant:
                     return response
 
         self._resolve_slots(decision, question)
+
+        transit_guard = getattr(self, "transit_guard", None)
+        if transit_guard is not None:
+            transit_check = transit_guard.check(
+                intent=decision.intent,
+                origin=decision.origin,
+                destination=decision.destination,
+                station=decision.station,
+            )
+            if transit_check.applies and not transit_check.complete:
+                response = AssistantResponse(
+                    answer=transit_guard.clarification(transit_check),
+                    route=decision.intent,
+                    guardrail_triggers=["transit_preconditions"],
+                    guardrail_details={
+                        "missing_fields": transit_check.missing_fields,
+                    },
+                )
+                self._remember(question, response.answer)
+                return response
 
         if decision.intent == "journey":
             response = self._handle_journey(decision)
@@ -275,10 +314,47 @@ class BVGAssistant:
             ]
         )
 
+        answer = str(response.content)
+        triggers = []
+        details = {}
+
+        if self.groundedness_guard is not None:
+            groundedness = self.groundedness_guard.check(
+                question=question,
+                evidence=context,
+                answer=answer,
+            )
+            details = {
+                "supported": groundedness.supported,
+                "unsupported_claims": groundedness.unsupported_claims,
+                "reason": groundedness.reason,
+            }
+            if not groundedness.supported:
+                triggers.append("groundedness")
+                original_answer = answer
+                answer = self.groundedness_guard.repair(
+                    question=question,
+                    official_context=context,
+                    answer=original_answer,
+                    unsupported_claims=groundedness.unsupported_claims,
+                )
+                repair_check = self.groundedness_guard.check(
+                    question=question,
+                    evidence=context,
+                    answer=answer,
+                )
+                details["original_answer"] = original_answer
+                details["repair_verified"] = repair_check.supported
+                if not repair_check.supported:
+                    answer = self.groundedness_guard.fallback
+                    details["repair_failure_reason"] = repair_check.reason
+
         return AssistantResponse(
-            answer=str(response.content),
+            answer=answer,
             route="knowledge",
             sources=sources,
+            guardrail_triggers=triggers,
+            guardrail_details=details,
         )
 
     def _handle_departure(
@@ -333,7 +409,6 @@ class BVGAssistant:
         self,
         question: str,
     ) -> AssistantResponse:
-
         response = self.llm.invoke(
             [
                 SystemMessage(content=ASSISTANT_SYSTEM_PROMPT),
