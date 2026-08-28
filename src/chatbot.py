@@ -1,6 +1,9 @@
-from langchain_core.messages import HumanMessage, SystemMessage
+import re
+
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from src.config import APP_SETTINGS
 from src.llm import create_chat_model
-from src.models import AssistantResponse, RetrievedSource
+from src.models import AssistantResponse, RetrievedSource, ConversationState
 from src.retrieval import BVGRetriever
 from src.router import QueryRouter
 from src.tools.transit.transitous import (
@@ -32,32 +35,160 @@ class BVGAssistant:
 
     def __init__(self) -> None:
         self.llm = create_chat_model()
-
         self.retriever = BVGRetriever()
         self.router = QueryRouter()
-
         self.transit = TransitousClient()
+        self.state = ConversationState()
 
     def ask(self, question: str) -> AssistantResponse:
-        decision = self.router.route(question)
+        decision = self.router.route(
+            self._question_with_context(question)
+        )
+        self._resolve_slots(decision, question)
 
         if decision.intent == "journey":
-            return self._handle_journey(decision)
+            response = self._handle_journey(decision)
+
+        elif decision.intent == "departure":
+            response = self._handle_departure(decision)
+
+        elif decision.intent == "knowledge":
+            response = self._handle_knowledge(question)
+
+        else:
+            response = self._handle_other(question)
+
+        self.state.history.extend(
+            [
+                HumanMessage(content=question),
+                AIMessage(content=response.answer),
+            ]
+        )
+        return response
+
+    def _resolve_slots(self, decision, question: str) -> None:
+        short_follow_up = len(question.split()) <= 8
+        if self.state.pending_intent and short_follow_up:
+            decision.intent = self.state.pending_intent
 
         if decision.intent == "departure":
-            return self._handle_departure(decision)
+            if decision.station:
+                self.state.station = decision.station
+            elif self.state.pending_intent == "departure":
+                decision.station = question.strip()
+                self.state.station = decision.station
 
-        if decision.intent == "knowledge":
-            return self._handle_knowledge(question)
+            self.state.pending_intent = (
+                None if decision.station else "departure"
+            )
+            return
 
-        return self._handle_other(question)
+        if decision.intent == "journey":
+            origin, destination = self._journey_slots(question)
+
+            decision.origin = decision.origin or origin
+            decision.destination = decision.destination or destination
+
+            if self.state.pending_intent == "journey":
+                decision.origin = decision.origin or self.state.origin
+                decision.destination = (
+                    decision.destination or self.state.destination
+                )
+
+                if self.state.origin and not decision.destination:
+                    decision.destination = question.strip()
+                elif self.state.destination and not decision.origin:
+                    decision.origin = question.strip()
+
+            if decision.origin:
+                self.state.origin = decision.origin
+            if decision.destination:
+                self.state.destination = decision.destination
+
+            self.state.pending_intent = (
+                None
+                if decision.origin and decision.destination
+                else "journey"
+            )
+            return
+
+        self._clear_pending_route()
+
+    @staticmethod
+    def _journey_slots(question: str) -> tuple[str | None, str | None]:
+        normalized = " ".join(question.strip().split())
+
+        from_to = re.search(
+            r"\bfrom\s+(.+?)\s+to\s+(.+?)[?.!]*$",
+            normalized,
+            flags=re.IGNORECASE,
+        )
+        if from_to:
+            return from_to.group(1), from_to.group(2)
+
+        repeated_from = re.search(
+            r"\bget\s+from\s+(.+?)\s+from\s+(.+?)[?.!]*$",
+            normalized,
+            flags=re.IGNORECASE,
+        )
+        if repeated_from:
+            return repeated_from.group(2), repeated_from.group(1)
+
+        to_from = re.search(
+            r"\bto\s+(?!get\b|go\b|travel\b)"
+            r"(.+?)\s+from\s+(.+?)[?.!]*$",
+            normalized,
+            flags=re.IGNORECASE,
+        )
+        if to_from:
+            return to_from.group(2), to_from.group(1)
+
+        destination_only = re.fullmatch(
+            r"to\s+(.+?)[?.!]*",
+            normalized,
+            flags=re.IGNORECASE,
+        )
+        if destination_only:
+            return None, destination_only.group(1)
+
+        return None, None
+
+    def _clear_pending_route(self) -> None:
+        self.state.pending_intent = None
+        self.state.origin = None
+        self.state.destination = None
+        self.state.station = None
+
+    def reset_session(self) -> None:
+        self.state = ConversationState()
+
+    def _question_with_context(self, question: str) -> str:
+        if not self.state.history:
+            return question
+
+        transcript = "\n".join(
+            f"{message.type}: {message.content}"
+            for message in self._recent_history()
+        )
+        return (
+            "Conversation so far:\n"
+            f"{transcript}\n\n"
+            "Current user message:\n"
+            f"{question}"
+        )
+
+    def _recent_history(self) -> list:
+        return self.state.history[
+            -APP_SETTINGS.history_message_limit:
+        ]
 
     def _handle_knowledge(
         self,
         question: str,
     ) -> AssistantResponse:
 
-        retrieved = self.retriever.retrieve(question)
+        retrieval_query = self._question_with_context(question)
+        retrieved = self.retriever.retrieve(retrieval_query)
 
         context_blocks = []
         sources = []
@@ -70,11 +201,8 @@ class BVGAssistant:
             )
 
             context_blocks.append(
-                f"""
-SOURCE: {source}
-
-{document.page_content}
-""".strip()
+                f"SOURCE: {source}\n\n"
+                f"{document.page_content}"
             )
 
             sources.append(
@@ -87,19 +215,17 @@ SOURCE: {source}
 
         context = "\n\n---\n\n".join(context_blocks)
 
-        prompt = f"""
-KNOWLEDGE BASE CONTEXT
-
-{context}
-
-USER QUESTION
-
-{question}
-""".strip()
+        prompt = (
+            "KNOWLEDGE BASE CONTEXT\n\n"
+            f"{context}\n\n"
+            "USER QUESTION\n\n"
+            f"{question}"
+        )
 
         response = self.llm.invoke(
             [
                 SystemMessage(content=NEUTRAL_RAG_SYSTEM),
+                *self._recent_history(),
                 HumanMessage(content=prompt),
             ]
         )
@@ -174,12 +300,9 @@ USER QUESTION
 
         response = self.llm.invoke(
             [
-                SystemMessage(
-                    content=GENERAL_SYSTEM_PROMPT
-                ),
-                HumanMessage(
-                    content=question
-                ),
+                SystemMessage(content=GENERAL_SYSTEM_PROMPT),
+                *self._recent_history(),
+                HumanMessage(content=question),
             ]
         )
 

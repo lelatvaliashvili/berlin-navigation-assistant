@@ -1,5 +1,6 @@
 from typing import Literal
 from pydantic import BaseModel, Field
+from src.config import APP_SETTINGS
 from src.llm import create_chat_model
 
 
@@ -47,7 +48,9 @@ ROUTER_SYSTEM_PROMPT = """
 
 class QueryRouter:
     def __init__(self) -> None:
-        llm = create_chat_model()
+        llm = create_chat_model(
+            num_predict=APP_SETTINGS.router_num_predict
+        )
 
         self.router = llm.with_structured_output(RouteDecision)
 

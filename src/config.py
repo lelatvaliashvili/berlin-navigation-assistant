@@ -8,6 +8,11 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 class AppSettings:
     chat_model: str = "llama3.1:8b"
     embedding_model: str = "nomic-embed-text"
+    chat_num_predict: int = 256
+    router_num_predict: int = 96
+    chat_num_ctx: int = 4096
+    model_keep_alive: str = "30m"
+    history_message_limit: int = 6
     knowledge_dir: Path = ROOT_DIR / "knowledge" / "domain"
     chunk_size: int = 800
     chunk_overlap: int = 100
