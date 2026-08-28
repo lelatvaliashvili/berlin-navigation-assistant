@@ -1,11 +1,15 @@
 import re
-
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from src.config import APP_SETTINGS
+from src.config import (
+    APP_SETTINGS,
+    ASSISTANT_SYSTEM_PROMPT,
+    DEPARTURE_STATION_PROMPT,
+    JOURNEY_ENDPOINTS_PROMPT,
+)
 from src.llm import create_chat_model
 from src.models import AssistantResponse, RetrievedSource, ConversationState
 from src.retrieval import BVGRetriever
-from src.router import QueryRouter
+from src.router import QueryRouter, RouteDecision
 from src.tools.transit.transitous import (
     TransitousClient,
     TransitousError,
@@ -15,35 +19,73 @@ from src.tools.transit.transit_formatting import (
     format_journey_plan,
 )
 
-
-GENERAL_SYSTEM_PROMPT = """
-You are a conversational assistant primarily focused on Berlin
-public transportation.
-
-Answer naturally and concisely.
-"""
-
-NEUTRAL_RAG_SYSTEM = (
-    "You are a helpful assistant for Berlin public transport. "
-    "Use the provided context when answering questions about tickets, fares, "
-    "travel rules, accessibility, and services. "
-    "Be concise, accurate, welcoming, and friendly."
-)
-
-
 class BVGAssistant:
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        guarded: bool = False,
+        enable_injection_guard: bool = False,
+        enable_completeness_guard: bool = False,
+    ) -> None:
         self.llm = create_chat_model()
         self.retriever = BVGRetriever()
         self.router = QueryRouter()
         self.transit = TransitousClient()
         self.state = ConversationState()
+        self.injection_guard = None
+        self.completeness_guard = None
 
-    def ask(self, question: str) -> AssistantResponse:
-        decision = self.router.route(
-            self._question_with_context(question)
-        )
+        if guarded:
+            enable_injection_guard = True
+            enable_completeness_guard = True
+
+        if enable_injection_guard:
+            from src.guardrails import PromptInjectionGuard
+            self.injection_guard = PromptInjectionGuard()
+
+        if enable_completeness_guard:
+            from src.guardrails import InformationCompletenessGuard
+            self.completeness_guard = InformationCompletenessGuard()
+
+    def classify(self, question: str) -> RouteDecision:
+        return self.router.route(self._question_with_context(question)) #based on context
+
+    def ask(self, question: str,
+        *,
+        decision: RouteDecision | None = None,
+    ) -> AssistantResponse:
+        if self.injection_guard is not None:
+            injection = self.injection_guard.check(question)
+            if injection.blocked:
+                return AssistantResponse(
+                    answer=self.injection_guard.refusal,
+                    route="knowledge",
+                    guardrail_triggers=["prompt_injection_authority"],
+                )
+
+        decision = decision or self.classify(question)
+
+        if self.completeness_guard is not None:
+            requirements = self.completeness_guard.evaluate(
+                decision.request_type,
+                decision.facts,
+            )
+            if requirements.applies:
+                if requirements.missing_fields:
+                    response = AssistantResponse(
+                        answer=self.completeness_guard.clarification(
+                            requirements
+                        ),
+                        route="knowledge",
+                        guardrail_triggers=["information_completeness"],
+                        guardrail_details={
+                            "request_type": requirements.request_type,
+                            "missing_fields": requirements.missing_fields,
+                        },
+                    )
+                    self._remember(question, response.answer)
+                    return response
+
         self._resolve_slots(decision, question)
 
         if decision.intent == "journey":
@@ -58,13 +100,16 @@ class BVGAssistant:
         else:
             response = self._handle_other(question)
 
+        self._remember(question, response.answer)
+        return response
+
+    def _remember(self, question: str, answer: str) -> None:
         self.state.history.extend(
             [
                 HumanMessage(content=question),
-                AIMessage(content=response.answer),
+                AIMessage(content=answer),
             ]
         )
-        return response
 
     def _resolve_slots(self, decision, question: str) -> None:
         short_follow_up = len(question.split()) <= 8
@@ -224,7 +269,7 @@ class BVGAssistant:
 
         response = self.llm.invoke(
             [
-                SystemMessage(content=NEUTRAL_RAG_SYSTEM),
+                SystemMessage(content=ASSISTANT_SYSTEM_PROMPT),
                 *self._recent_history(),
                 HumanMessage(content=prompt),
             ]
@@ -243,10 +288,7 @@ class BVGAssistant:
 
         if not decision.station:
             return AssistantResponse(
-                answer=(
-                    "Which station would you like "
-                    "departure information for?"
-                ),
+                answer=DEPARTURE_STATION_PROMPT,
                 route="departure",
             )
 
@@ -269,10 +311,7 @@ class BVGAssistant:
     def _handle_journey(self, decision,) -> AssistantResponse:
         if not decision.origin or not decision.destination:
             return AssistantResponse(
-                answer=(
-                    "Please provide an origin and destination "
-                    "to plan the journey."
-                ),
+                answer=JOURNEY_ENDPOINTS_PROMPT,
                 route="journey",
             )
 
@@ -288,10 +327,7 @@ class BVGAssistant:
                 route="journey",
             )
 
-        return AssistantResponse(
-            answer=format_journey_plan(plan),
-            route="journey",
-        )
+        return AssistantResponse(answer=format_journey_plan(plan), route="journey")
 
     def _handle_other(
         self,
@@ -300,13 +336,10 @@ class BVGAssistant:
 
         response = self.llm.invoke(
             [
-                SystemMessage(content=GENERAL_SYSTEM_PROMPT),
+                SystemMessage(content=ASSISTANT_SYSTEM_PROMPT),
                 *self._recent_history(),
                 HumanMessage(content=question),
             ]
         )
 
-        return AssistantResponse(
-            answer=str(response.content),
-            route="other",
-        )
+        return AssistantResponse(answer=str(response.content), route="other")

@@ -3,10 +3,11 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from src.chatbot import BVGAssistant
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.chatbot import BVGAssistant
 
 DEFAULT_SCENARIOS = (PROJECT_ROOT/"evaluation"/"conversation_scenarios_v1.json")
 RESULTS = PROJECT_ROOT/"evaluation"/"results"
@@ -44,6 +45,8 @@ def run_conversation(assistant: BVGAssistant, scenario: dict) -> dict:
                     ),
                     "answer": response.answer,
                     "sources": sources,
+                    "guardrail_triggers": response.guardrail_triggers,
+                    "guardrail_details": response.guardrail_details,
                     "error": None,
                 }
             )
@@ -58,6 +61,8 @@ def run_conversation(assistant: BVGAssistant, scenario: dict) -> dict:
                     "route_correct": False,
                     "answer": None,
                     "sources": [],
+                    "guardrail_triggers": [],
+                    "guardrail_details": {},
                     "error": repr(exc),
                 }
             )
@@ -71,7 +76,10 @@ def run_conversation(assistant: BVGAssistant, scenario: dict) -> dict:
     }
 
 
-def run_scenarios(path: Path = DEFAULT_SCENARIOS) -> list[dict]:
+def run_scenarios(
+    path: Path = DEFAULT_SCENARIOS,
+    configuration: str = "baseline",
+) -> list[dict]:
     scenarios = load_scenarios(path)
     results = []
 
@@ -81,7 +89,16 @@ def run_scenarios(path: Path = DEFAULT_SCENARIOS) -> list[dict]:
             f"[{index:02}/{len(scenarios)}] {scenario['id']} "
             f"({scenario['category']})"
         )
-        result = run_conversation(BVGAssistant(), scenario)
+        result = run_conversation(
+            BVGAssistant(
+                guarded=configuration == "guarded",
+                enable_injection_guard=configuration == "injection",
+                enable_completeness_guard=(
+                    configuration == "completeness"
+                ),
+            ),
+            scenario,
+        )
         results.append(result)
         for turn in result["turns"]:
             print(
@@ -145,6 +162,14 @@ def save_results(results: list[dict], configuration: str) -> tuple[Path, Path]:
                     "",
                 ]
             )
+            if turn["guardrail_triggers"]:
+                lines.extend(
+                    [
+                        "**Guardrail triggers:** "
+                        + ", ".join(turn["guardrail_triggers"]),
+                        "",
+                    ]
+                )
             if turn["error"]:
                 lines.extend([f"**Error:** `{turn['error']}`", ""])
         lines.extend(["---", ""])
@@ -155,11 +180,15 @@ def save_results(results: list[dict], configuration: str) -> tuple[Path, Path]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--configuration", default="baseline")
+    parser.add_argument(
+        "--configuration",
+        choices=("baseline", "completeness", "injection", "guarded"),
+        default="baseline",
+    )
     parser.add_argument("--scenarios", type=Path, default=DEFAULT_SCENARIOS)
     args = parser.parse_args()
 
-    results = run_scenarios(args.scenarios)
+    results = run_scenarios(args.scenarios, args.configuration)
     json_path, markdown_path = save_results(results, args.configuration)
 
     total_turns = sum(len(result["turns"]) for result in results)

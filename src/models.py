@@ -13,6 +13,8 @@ class AssistantResponse:
     answer: str
     route: str
     sources: list[RetrievedSource] = field(default_factory=list)
+    guardrail_triggers: list[str] = field(default_factory=list)
+    guardrail_details: dict[str, object] = field(default_factory=dict)
 
 @dataclass
 class ConversationState:

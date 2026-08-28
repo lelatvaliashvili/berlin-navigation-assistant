@@ -5,7 +5,6 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from src.config import APP_SETTINGS
 from src.llm import create_embeddings
 
-
 class BVGRetriever:
 
     def __init__(self) -> None:
@@ -24,6 +23,7 @@ class BVGRetriever:
                 f"{APP_SETTINGS.knowledge_dir}"
             )
 
+        #splits the documents by section
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=APP_SETTINGS.chunk_size,
             chunk_overlap=APP_SETTINGS.chunk_overlap,
@@ -36,7 +36,6 @@ class BVGRetriever:
                 " ",
             ],
         )
-
         chunks = splitter.split_documents(documents)
 
         self.vector_store.add_documents(chunks)
@@ -49,8 +48,6 @@ class BVGRetriever:
         for path in root.rglob("*.md"):
             relative_path = path.relative_to(root)
 
-            # Example:
-            # tickets/single_ticket.md -> category=tickets
             category = (
                 relative_path.parts[0]
                 if len(relative_path.parts) > 1
@@ -70,13 +67,11 @@ class BVGRetriever:
 
         return documents
 
-    def retrieve(
-        self,
+    def retrieve(self,
         query: str,
         k: int | None = None,
     ) -> list[tuple[Document, float]]:
 
         return self.vector_store.similarity_search_with_score(
             query=query,
-            k=k or APP_SETTINGS.retrieval_k,
-        )
+            k=k or APP_SETTINGS.retrieval_k)

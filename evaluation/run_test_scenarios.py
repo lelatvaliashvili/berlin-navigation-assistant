@@ -1,17 +1,20 @@
+import argparse
 import json
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
 import pandas as pd
-from src.chatbot import BVGAssistant
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.chatbot import BVGAssistant
 
 DEFAULT_SCENARIOS = (PROJECT_ROOT / "evaluation" / "scenarios_v1.json")
 
 RESULTS = (PROJECT_ROOT / "evaluation" / "results")
-
 
 def load_scenarios(
     path: Path = DEFAULT_SCENARIOS,
@@ -51,6 +54,8 @@ def run_scenario(
             "actual_route": response.route,
             "answer": response.answer,
             "sources": sources,
+            "guardrail_triggers": response.guardrail_triggers,
+            "guardrail_details": response.guardrail_details,
             "error": None,
         }
 
@@ -69,18 +74,26 @@ def run_scenario(
             "actual_route": None,
             "answer": None,
             "sources": [],
+            "guardrail_triggers": [],
+            "guardrail_details": {},
             "error": repr(exc),
         }
 
-def run_scenarios(configuration: str = "baseline",
-    scenarios_path: Path = DEFAULT_SCENARIOS) -> list[dict]:
+def run_scenarios(
+    configuration: str = "baseline",
+    scenarios_path: Path = DEFAULT_SCENARIOS,
+) -> list[dict]:
     scenarios = load_scenarios(scenarios_path)
     results = []
 
     print(f"\nRunning {len(scenarios)} scenarios " )
 
     for index, scenario in enumerate(scenarios, start=1,):
-        assistant = BVGAssistant()
+        assistant = BVGAssistant(
+            guarded=configuration == "guarded",
+            enable_injection_guard=configuration == "injection",
+            enable_completeness_guard=configuration == "completeness",
+        )
         print(
             f"[{index:02}/{len(scenarios)}] "
             f"{scenario['id']} "
@@ -150,10 +163,7 @@ def save_json_results(
         exist_ok=True,
     )
 
-    output_path = (
-            RESULTS
-            / f"{configuration}_v1.json"
-    )
+    output_path = RESULTS / f"{configuration}_v1.json"
 
     payload = {
         "configuration": configuration,
@@ -177,10 +187,7 @@ def save_markdown_report(
         exist_ok=True,
     )
 
-    output_path = (
-            RESULTS
-            / f"{configuration}_v1.md"
-    )
+    output_path = RESULTS / f"{configuration}_v1.md"
 
     lines = [
         f"# Evaluation — {configuration}",
@@ -237,6 +244,15 @@ def save_markdown_report(
 
             lines.append("")
 
+        if result["guardrail_triggers"]:
+            lines.extend(
+                [
+                    "**Guardrail triggers:** "
+                    + ", ".join(result["guardrail_triggers"]),
+                    "",
+                ]
+            )
+
         if result["error"]:
 
             lines.extend(
@@ -278,11 +294,17 @@ def save_results(
 
 
 def main() -> None:
-
-    configuration = "baseline"
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--configuration",
+        choices=("baseline", "completeness", "injection", "guarded"),
+        default="baseline",
+    )
+    args = parser.parse_args()
+    configuration = args.configuration
 
     results = run_scenarios(
-        configuration=configuration
+        configuration=configuration,
     )
 
     json_path, markdown_path = save_results(
