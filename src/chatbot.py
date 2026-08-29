@@ -28,6 +28,7 @@ class BVGAssistant:
         enable_completeness_guard: bool = False,
         enable_groundedness_guard: bool = False,
         enable_transit_guard: bool = False,
+        enable_scope_guard: bool = False,
     ) -> None:
         self.llm = create_chat_model()
         self.retriever = BVGRetriever()
@@ -38,12 +39,14 @@ class BVGAssistant:
         self.completeness_guard = None
         self.groundedness_guard = None
         self.transit_guard = None
+        self.scope_guard = None
 
         if guarded:
             enable_injection_guard = True
             enable_completeness_guard = True
             enable_groundedness_guard = True
             enable_transit_guard = True
+            enable_scope_guard = True
 
         if enable_injection_guard:
             from src.guardrails import PromptInjectionGuard
@@ -61,6 +64,10 @@ class BVGAssistant:
             from src.guardrails import TransitPreconditionGuard
             self.transit_guard = TransitPreconditionGuard()
 
+        if enable_scope_guard:
+            from src.guardrails import ScopeBoundaryGuard
+            self.scope_guard = ScopeBoundaryGuard()
+
     def classify(self, question: str) -> RouteDecision:
         return self.router.route(self._question_with_context(question)) #based on context
 
@@ -68,6 +75,8 @@ class BVGAssistant:
         *,
         decision: RouteDecision | None = None,
     ) -> AssistantResponse:
+        original_question = question
+
         if self.injection_guard is not None:
             injection = self.injection_guard.check(question)
 
@@ -82,7 +91,33 @@ class BVGAssistant:
                     },
                 )
 
-        decision = decision or self.classify(question)
+        decision = decision or self.classify(original_question)
+
+        scope_check = None
+        scope_guard = getattr(self, "scope_guard", None)
+        if scope_guard is not None:
+            scope_check = scope_guard.check(
+                self._question_with_context(original_question),
+                intent=decision.intent,
+                origin=decision.origin,
+                destination=decision.destination,
+                station=decision.station,
+            )
+            if scope_check.status == "out_of_scope":
+                response = AssistantResponse(
+                    answer=scope_guard.refusal(scope_check),
+                    route="other",
+                    guardrail_triggers=[scope_guard.trigger],
+                    guardrail_details={
+                        "scope": scope_check.status,
+                        "out_of_scope_topics": scope_check.out_of_scope_topics,
+                    },
+                )
+                self._remember(original_question, response.answer)
+                return response
+            if scope_check.status == "mixed" and scope_check.in_scope_request:
+                question = scope_check.in_scope_request
+                decision = self.classify(question)
 
         if self.completeness_guard is not None:
             requirements = self.completeness_guard.evaluate(
@@ -139,7 +174,19 @@ class BVGAssistant:
         else:
             response = self._handle_other(question)
 
-        self._remember(question, response.answer)
+        if scope_check is not None and scope_check.status == "mixed":
+            response.answer = (
+                f"{response.answer.rstrip()}\n\n"
+                f"{scope_guard.mixed_notice(scope_check)}"
+            )
+            response.guardrail_triggers.append(scope_guard.trigger)
+            response.guardrail_details[scope_guard.trigger] = {
+                "scope": scope_check.status,
+                "in_scope_request": scope_check.in_scope_request,
+                "out_of_scope_topics": scope_check.out_of_scope_topics,
+            }
+
+        self._remember(original_question, response.answer)
         return response
 
     def _remember(self, question: str, answer: str) -> None:

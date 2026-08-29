@@ -72,6 +72,13 @@ class GroundednessGuard:
         ):
             return result
 
+        if result := self._check_ber_ab_contradiction(
+            question=question,
+            evidence=evidence,
+            answer=answer,
+        ):
+            return result
+
         if self._explicit_return_rule_is_aligned(
             question=question,
             evidence=evidence,
@@ -91,6 +98,46 @@ class GroundednessGuard:
             evidence=evidence,
             answer=answer,
         )
+
+    @staticmethod
+    def _check_ber_ab_contradiction(
+        *,
+        question: str,
+        evidence: str,
+        answer: str,
+    ) -> GroundednessResult | None:
+        """Catch a high-impact fare-zone contradiction before LLM judging."""
+        question_text = question.casefold()
+        evidence_text = evidence.casefold()
+        answer_text = answer.casefold()
+
+        asks_about_ber = bool(re.search(r"\b(?:ber|airport)\b", question_text))
+        evidence_places_ber_in_c = (
+            "berlin brandenburg airport (ber) is in fare zone c" in evidence_text
+            or "ber airport" in evidence_text and "zone c" in evidence_text
+        )
+        says_ab_is_valid = bool(
+            re.search(
+                r"(?:ab|zone ab).{0,80}(?:valid|sufficient|covers|can travel)",
+                answer_text,
+            )
+        )
+        says_airport_is_ab = bool(
+            re.search(r"airport.{0,50}(?:zone ab|fare zone ab)", answer_text)
+        )
+
+        if asks_about_ber and evidence_places_ber_in_c and (
+            says_ab_is_valid or says_airport_is_ab
+        ):
+            return GroundednessResult(
+                supported=False,
+                unsupported_claims=[
+                    "The answer incorrectly says an AB-only ticket covers BER; "
+                    "the reviewed rule places BER in zone C."
+                ],
+                reason="The answer contradicts the BER fare-zone rule.",
+            )
+        return None
 
     @staticmethod
     def _check_evidence_available(

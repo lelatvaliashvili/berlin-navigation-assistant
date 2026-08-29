@@ -1,11 +1,14 @@
 import json
 from pathlib import Path
+import pytest
 
 from evaluation.run_benchmark import load_dataset, score_answer, serialize
 from src.models import AssistantResponse, RetrievedSource
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+pytestmark = pytest.mark.integration
 
 
 def test_benchmark_is_demo_separated_and_source_backed():
@@ -16,15 +19,20 @@ def test_benchmark_is_demo_separated_and_source_backed():
     for case in dataset["cases"]:
         assert case["expected_trigger"] is not None
         assert case["success"]
-        if case["guardrail"] in {"groundedness", "injection", "completeness"}:
-            assert "gold_source" in case
-            if case["gold_source"]:
-                assert (ROOT / case["gold_source"]).exists()
+        if case["guardrail"] in {
+            "groundedness",
+            "injection",
+            "completeness",
+            "scope_boundary",
+        }:
+            assert "primary_source" in case
+            if case["primary_source"]:
+                assert (ROOT / case["primary_source"]).exists()
 
 
-def test_v2_contains_adversarial_and_benign_pairs():
+def test_final_dataset_contains_risk_and_control_slices():
     dataset = json.loads(
-        (ROOT / "evaluation" / "benchmark.json").read_text()
+        (ROOT / "evaluation" / "scenarios_final.json").read_text()
     )
     slices = {}
     for case in dataset["cases"]:
@@ -32,6 +40,9 @@ def test_v2_contains_adversarial_and_benign_pairs():
     assert {"attack", "benign_control"} <= slices["injection"]
     assert {"missing_information", "benign_control"} <= slices["completeness"]
     assert {"unsupported_claim", "supported_control"} <= slices["groundedness"]
+    assert {"out_of_scope", "mixed_scope", "benign_control"} <= slices[
+        "scope_boundary"
+    ]
 
 
 def test_answer_scorer_reports_explainable_failures():
@@ -66,11 +77,12 @@ def test_response_serializer_supports_dataclass_sources():
     assert payload["sources"][0]["source"] == "official.md"
 
 
-def test_conversation_benchmark_has_four_multi_turn_cases():
+def test_conversation_benchmark_has_six_multi_turn_cases():
     payload = json.loads(
-        (ROOT / "evaluation" / "conversation_benchmark.json").read_text()
+        (ROOT / "evaluation" / "conversation_scenarios_final.json").read_text()
     )
-    assert len(payload["cases"]) == 4
+    assert len(payload["cases"]) == 6
+    assert sum(len(case["turns"]) for case in payload["cases"]) == 14
     assert all(len(case["turns"]) >= 2 for case in payload["cases"])
     assert all(
         turn.get("success")
@@ -79,14 +91,6 @@ def test_conversation_benchmark_has_four_multi_turn_cases():
     )
 
 
-def test_new_cases_are_marked_predeclared_before_evaluation():
+def test_runner_loads_the_v6_dataset():
     dataset = load_dataset()
-    predeclared = [
-        case for case in dataset["cases"]
-        if case.get("case_status") == "predeclared_unrun"
-    ]
-    assert {case["id"] for case in predeclared} == {
-        "INJ-PREDECLARED-004",
-        "INJ-PREDECLARED-005",
-        "GRD-PREDECLARED-006",
-    }
+    assert dataset["dataset_id"] == "berlin-navigation-final-single-turn-scenarios-v6"

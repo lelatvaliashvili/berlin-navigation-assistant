@@ -1,4 +1,4 @@
-"""Run the four multi-turn conversations through baseline and guarded chatbots."""
+"""Run the final multi-turn scenarios through baseline and guarded chatbots."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from evaluation.run_benchmark import score_answer, serialize
 from src.chatbot import BVGAssistant
 
 
-DATASET_PATH = PROJECT_ROOT / "evaluation" / "conversation_benchmark.json"
+DATASET_PATH = PROJECT_ROOT / "evaluation" / "conversation_scenarios_final.json"
 RESULTS_DIR = PROJECT_ROOT / "evaluation" / "results"
 
 

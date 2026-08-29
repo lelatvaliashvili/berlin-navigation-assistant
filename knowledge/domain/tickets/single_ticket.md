@@ -44,6 +44,10 @@ fare may be stated or estimated from this document.
 
 Single tickets are available for Berlin fare zones AB, BC, and ABC.
 
+Berlin Brandenburg Airport (BER) is in fare zone C. An AB-only ticket does
+not cover travel to or from BER; the ticket must include zone C, such as a
+Berlin ABC ticket.
+
 ## Journey rules
 
 A single ticket allows one journey in one direction. Transfers between eligible

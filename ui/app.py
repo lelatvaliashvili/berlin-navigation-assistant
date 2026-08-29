@@ -13,9 +13,9 @@ from src.chatbot import BVGAssistant
 st.title("Berlin Navigation Assistant")
 
 if "assistant" not in st.session_state:
-    st.session_state.assistant = BVGAssistant(
-        enable_completeness_guard=True
-    )
+    # The interactive demo represents the production-safe configuration.
+    # The evaluation runner separately constructs an unguarded baseline.
+    st.session_state.assistant = BVGAssistant(guarded=True)
 
 if "messages" not in st.session_state:
     st.session_state.messages = []

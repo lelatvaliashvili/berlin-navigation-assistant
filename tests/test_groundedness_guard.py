@@ -89,6 +89,24 @@ def test_number_from_question_is_not_automatically_rejected() -> None:
     assert result.supported
 
 
+def test_ab_ticket_claim_for_ber_is_rejected_when_evidence_places_ber_in_c() -> None:
+    guard = make_guard(
+        GroundednessDecision(supported=True, reason="unused")
+    )
+
+    result = guard.check(
+        question="I have a ticket type AB, can I travel to BER airport?",
+        evidence=(
+            "Berlin Brandenburg Airport (BER) is in fare zone C. An AB-only "
+            "ticket does not cover travel to or from BER."
+        ),
+        answer="With an AB ticket, you can travel to BER airport because it is in zone AB.",
+    )
+
+    assert not result.supported
+    assert "zone C" in result.unsupported_claims[0]
+
+
 def test_explicit_return_prohibition_allows_supported_transfer_claim() -> None:
     guard = make_guard(
         GroundednessDecision(

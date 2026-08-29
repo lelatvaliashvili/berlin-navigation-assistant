@@ -2,6 +2,7 @@ from src.guardrails.completeness import InformationCompletenessGuard
 from src.models import ConversationState
 from src.router import ConversationFacts, RouteDecision
 from src.chatbot import BVGAssistant
+import pytest
 
 
 def test_child_travel_requires_ticket_type_and_passenger_details() -> None:
@@ -44,6 +45,7 @@ def test_ticket_recommendation_uses_yaml_requirements() -> None:
     ]
 
 
+@pytest.mark.integration
 def test_preclassified_decision_skips_second_router_call() -> None:
     assistant = BVGAssistant.__new__(BVGAssistant)
     assistant.state = ConversationState()
@@ -70,6 +72,7 @@ def test_preclassified_decision_skips_second_router_call() -> None:
     assert response.guardrail_triggers == ["information_completeness"]
 
 
+@pytest.mark.integration
 def test_complete_request_is_not_silently_rerouted_by_guard() -> None:
     assistant = BVGAssistant.__new__(BVGAssistant)
     assistant.state = ConversationState()
