@@ -79,6 +79,9 @@ class RouteDecision(BaseModel):
     origin: str | None = None
     destination: str | None = None
     station: str | None = None
+    origin_status: Literal["resolved", "missing", "ambiguous", "unknown"] = "unknown"
+    destination_status: Literal["resolved", "missing", "ambiguous", "unknown"] = "unknown"
+    station_status: Literal["resolved", "missing", "ambiguous", "unknown"] = "unknown"
 
     reasoning_summary: str = Field(
         description=(
@@ -194,6 +197,15 @@ ROUTER_SYSTEM_PROMPT = """
     - intent=departure
     - request_type=other
     - station=null
+
+    For each route slot, also classify resolution status:
+    - resolved: a specific station or place is explicitly provided or clearly
+      resolved from user-authored conversation;
+    - ambiguous: a vague reference such as "here", "there", "near downtown",
+      "the usual station", or "that place" cannot be resolved;
+    - missing: no value was provided.
+    Never mark a vague reference as resolved.
+
     """
 
 class QueryRouter:

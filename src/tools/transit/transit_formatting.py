@@ -7,7 +7,7 @@ def format_departure_board(board: DepartureBoard, provenance_notice: str | None 
         answer = f"I found {board.stop_name}, but no upcoming departures are listed."
         return f"{answer}\n{provenance_notice}" if provenance_notice else answer
 
-    lines = [f"Next departures from {board.stop_name} (via Transitous):"]
+    lines = [f"Next departures from {board.stop_name} (live information):"]
 
     if provenance_notice:
         lines.append(provenance_notice)
@@ -35,7 +35,7 @@ def format_journey_plan(plan: JourneyPlan) -> str:
     if not plan.journeys:
         return f"I found {plan.origin} and {plan.destination}, but no journeys are currently listed."
 
-    lines = [f"Journey options from {plan.origin} to {plan.destination} (via Transitous):"]
+    lines = [f"Journey options from {plan.origin} to {plan.destination} (live information):"]
 
     for index, journey in enumerate(plan.journeys, start=1):
         if journey.transfers == 0:

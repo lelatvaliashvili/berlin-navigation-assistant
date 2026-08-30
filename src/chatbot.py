@@ -40,6 +40,7 @@ class BVGAssistant:
         self.groundedness_guard = None
         self.transit_guard = None
         self.scope_guard = None
+        self.last_decision = None
 
         if guarded:
             enable_injection_guard = True
@@ -69,7 +70,26 @@ class BVGAssistant:
             self.scope_guard = ScopeBoundaryGuard()
 
     def classify(self, question: str) -> RouteDecision:
-        return self.router.route(self._question_with_context(question)) #based on context
+        return self.router.route(self._router_question_with_context(question))
+
+    def _router_question_with_context(self, question: str) -> str:
+        """Give routing/extraction only user-authored facts, never AI claims."""
+        if not self.state.history:
+            return question
+        user_messages = [
+            message.content
+            for message in self._recent_history()
+            if isinstance(message, HumanMessage)
+        ]
+        if not user_messages:
+            return question
+        transcript = "\n".join(user_messages)
+        return (
+            "User conversation so far:\n"
+            f"{transcript}\n\n"
+            "Current user message:\n"
+            f"{question}"
+        )
 
     def ask(self, question: str,
         *,
@@ -92,6 +112,8 @@ class BVGAssistant:
                 )
 
         decision = decision or self.classify(original_question)
+        self.last_decision = decision
+        self._mark_unresolved_route_slots(decision, original_question)
 
         scope_check = None
         scope_guard = getattr(self, "scope_guard", None)
@@ -102,6 +124,10 @@ class BVGAssistant:
                 origin=decision.origin,
                 destination=decision.destination,
                 station=decision.station,
+                travel_area=decision.facts.travel_area,
+                origin_status=decision.origin_status,
+                destination_status=decision.destination_status,
+                station_status=decision.station_status,
             )
             if scope_check.status == "out_of_scope":
                 response = AssistantResponse(
@@ -118,6 +144,7 @@ class BVGAssistant:
             if scope_check.status == "mixed" and scope_check.in_scope_request:
                 question = scope_check.in_scope_request
                 decision = self.classify(question)
+                self.last_decision = decision
 
         if self.completeness_guard is not None:
             requirements = self.completeness_guard.evaluate(
@@ -244,6 +271,20 @@ class BVGAssistant:
             return
 
         self._clear_pending_route()
+
+    @staticmethod
+    def _mark_unresolved_route_slots(decision, question: str) -> None:
+        normalized = " ".join(question.casefold().split())
+        unresolved = r"(?:here|there|this station|that station|this place|that place)"
+        if decision.intent == "departure" and re.search(
+            rf"\bfrom\s+{unresolved}\b", normalized
+        ):
+            decision.station_status = "ambiguous"
+        if decision.intent == "journey":
+            if re.search(rf"\bfrom\s+{unresolved}\b", normalized):
+                decision.origin_status = "ambiguous"
+            if re.search(rf"\bto\s+{unresolved}\b", normalized):
+                decision.destination_status = "ambiguous"
 
     @staticmethod
     def _journey_slots(question: str) -> tuple[str | None, str | None]:

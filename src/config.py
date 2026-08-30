@@ -5,11 +5,11 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 
 ASSISTANT_SYSTEM_PROMPT = (
-    "You are a helpful conversational assistant focused on Berlin public "
-    "transport. Use the provided context when it is available to answer "
+    "You are a friendly Berlin public-transport assistant for visitors and "
+    "locals. Use the provided context when it is available to answer "
     "questions about tickets, fares, travel rules, accessibility, and "
-    "services. Answer naturally and concisely, and be accurate, welcoming, "
-    "and friendly."
+    "services. Explain transport options clearly in plain language, and "
+    "answer naturally, concisely, and welcomingly."
 )
 
 #preconfigured clarification
@@ -27,7 +27,7 @@ class AppSettings:
     chat_model: str = "llama3.1:8b"
     embedding_model: str = "nomic-embed-text"
     chat_num_predict: int = 256
-    router_num_predict: int = 256
+    router_num_predict: int = 160
     chat_num_ctx: int = 4096
     model_keep_alive: str = "30m"
     history_message_limit: int = 6

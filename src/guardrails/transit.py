@@ -1,6 +1,23 @@
 from dataclasses import dataclass
 
 
+UNRESOLVED_REFERENCES = {
+    "here",
+    "there",
+    "this station",
+    "that station",
+    "this place",
+    "that place",
+}
+
+
+def _is_resolved(value: str | None) -> bool:
+    if not value or not value.strip():
+        return False
+    normalized = " ".join(value.casefold().strip().split())
+    return normalized not in UNRESOLVED_REFERENCES
+
+
 @dataclass(frozen=True)
 class TransitPreconditionResult:
     applies: bool
@@ -25,19 +42,26 @@ class TransitPreconditionGuard:
         origin: str | None = None,
         destination: str | None = None,
         station: str | None = None,
+        origin_status: str = "unknown",
+        destination_status: str = "unknown",
+        station_status: str = "unknown",
     ) -> TransitPreconditionResult:
         if intent == "departure":
-            missing = [] if station else ["station"]
+            missing = [] if (
+                station_status == "resolved"
+                or (station_status == "unknown" and _is_resolved(station))
+            ) else ["station"]
             return TransitPreconditionResult(True, missing)
 
         if intent == "journey":
             missing = [
                 field
-                for field, value in (
-                    ("origin", origin),
-                    ("destination", destination),
+                for field, value, status in (
+                    ("origin", origin, origin_status),
+                    ("destination", destination, destination_status),
                 )
-                if not value
+                if status != "resolved"
+                and not (status == "unknown" and _is_resolved(value))
             ]
             return TransitPreconditionResult(True, missing)
 

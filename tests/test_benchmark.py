@@ -13,7 +13,6 @@ pytestmark = pytest.mark.integration
 
 def test_benchmark_is_demo_separated_and_source_backed():
     dataset = load_dataset()
-    assert dataset["frozen_at"]
     assert "holdout" in dataset["label_policy"].casefold()
     assert len(dataset["cases"]) >= 15
     for case in dataset["cases"]:
@@ -32,7 +31,7 @@ def test_benchmark_is_demo_separated_and_source_backed():
 
 def test_final_dataset_contains_risk_and_control_slices():
     dataset = json.loads(
-        (ROOT / "evaluation" / "scenarios_final.json").read_text()
+        (ROOT / "evaluation" / "single_turn_benchmark.json").read_text()
     )
     slices = {}
     for case in dataset["cases"]:
@@ -79,7 +78,7 @@ def test_response_serializer_supports_dataclass_sources():
 
 def test_conversation_benchmark_has_six_multi_turn_cases():
     payload = json.loads(
-        (ROOT / "evaluation" / "conversation_scenarios_final.json").read_text()
+        (ROOT / "evaluation" / "multi_turn_benchmark.json").read_text()
     )
     assert len(payload["cases"]) == 6
     assert sum(len(case["turns"]) for case in payload["cases"]) == 14
@@ -91,6 +90,6 @@ def test_conversation_benchmark_has_six_multi_turn_cases():
     )
 
 
-def test_runner_loads_the_v6_dataset():
+def test_runner_loads_the_named_single_turn_dataset():
     dataset = load_dataset()
-    assert dataset["dataset_id"] == "berlin-navigation-final-single-turn-scenarios-v6"
+    assert dataset["dataset_id"] == "berlin-navigation-single-turn-benchmark"

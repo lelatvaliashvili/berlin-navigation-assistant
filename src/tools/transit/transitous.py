@@ -1,7 +1,9 @@
 from __future__ import annotations
 from datetime import datetime
 from typing import Any
+from difflib import SequenceMatcher
 import httpx
+import re
 from src.config import TRANSITOUS_SETTINGS
 from src.tools.transit.constants import LOCAL_TRANSIT_MODES, BERLIN_TIMEZONE
 from src.tools.transit.models import JourneyPlan, DepartureBoard, Departure, Journey, JourneySegment
@@ -105,8 +107,9 @@ class TransitousClient:
         )
 
     def _get_station_by_name(self, client: httpx.Client, station_name:str) -> dict[str, Any] | None:
-        candidates = self._fetch_stop_candidates(client, station_name)
-        return _select_berlin_stop(candidates)
+        requested = (station_name)
+        candidates = self._fetch_stop_candidates(client, requested)
+        return _select_berlin_stop(candidates, requested)
 
     def _fetch_stop_candidates(self, client: httpx.Client,  station_name: str) -> Any:
         response = client.get(
@@ -122,19 +125,73 @@ class TransitousClient:
         return response.json()
 
 
-def _select_berlin_stop(candidates: Any) -> dict[str, Any] | None:
+def _select_berlin_stop(
+    candidates: Any,
+    requested_name: str = "",
+) -> dict[str, Any] | None:
     if not isinstance(candidates, list):
         return None
 
+    requested = _place_text(requested_name)
+    ranked: list[tuple[float, dict[str, Any]]] = []
     for candidate in candidates:
         if not isinstance(candidate, dict) or not candidate.get("id"):
             continue
 
         is_supported_berlin_stop = _is_supported_berlin_stop(candidate)
         if is_supported_berlin_stop:
-           return candidate #preserves Transitous' relevance order (first candidate by relevance), no need for re-sorting
+            name = _place_text(str(candidate.get("name") or ""))
+            if not name:
+                continue
+            if _is_airport_request(requested) and not _has_airport_metadata(candidate):
+                continue
+            score = SequenceMatcher(None, requested, name).ratio()
+            requested_tokens = set(requested.split())
+            candidate_tokens = set(name.split())
+            if requested_tokens:
+                score += 0.35 * len(requested_tokens & candidate_tokens) / len(requested_tokens)
+            ranked.append((score, candidate))
 
-    return None
+    if not ranked:
+        return None
+    score, candidate = max(ranked, key=lambda item: item[0])
+    # A low score means the geocoder returned an unrelated Berlin stop.
+    return candidate if score >= 0.30 else None
+
+
+def _place_text(value: str) -> str:
+    return " ".join(value.casefold().replace("-", " ").split())
+
+
+def _is_airport_request(value: str) -> bool:
+    tokens = set(_place_text(value).split())
+    return "airport" in tokens or "flughafen" in tokens
+
+
+def _has_airport_metadata(candidate: dict[str, Any]) -> bool:
+    """Use provider metadata, not station-name guesses, for airport entities."""
+    metadata = candidate.get("properties") or candidate.get("metadata") or candidate
+    if not isinstance(metadata, dict):
+        return False
+    values: list[str] = []
+    for key in ("type", "category", "poiType", "placeType", "subType", "tags"):
+        value = metadata.get(key)
+        if isinstance(value, list):
+            values.extend(str(item).casefold() for item in value)
+        elif value is not None:
+            values.append(str(value).casefold())
+    return any("airport" in value or "aerodrome" in value or "flughafen" in value for value in values)
+
+
+def _normalize_place_name(value: str) -> str:
+    normalized = " ".join(value.split())
+    if re.search(
+        r"\b(?:ber|berlin\s+(?:brandenburg\s+)?airport|the\s+airport|airport)\b",
+        normalized,
+        flags=re.IGNORECASE,
+    ):
+        return "Berlin Brandenburg Airport"
+    return normalized
 
 def _is_supported_berlin_stop(candidate: dict[str, Any]) -> bool:
     areas = candidate.get("areas") or []

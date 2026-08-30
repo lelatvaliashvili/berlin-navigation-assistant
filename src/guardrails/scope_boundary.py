@@ -37,6 +37,11 @@ Return in_scope for Berlin/VBB local public-transport policies, fares,
 accessibility, departures, and journeys whose relevant endpoints are within the
 supported Berlin/VBB area.
 
+Incomplete or ambiguous Berlin transport requests remain in_scope. Missing
+stations, destinations, or passenger details should be handled by a later
+clarification guard, not treated as unrelated or out of scope. Words such as
+"here" and "there" are unresolved route slots, not evidence of another topic.
+
 Return out_of_scope for unrelated topics, another region's transport rules, or
 intercity journeys between Berlin and a city outside the supported area. A
 journey does not become in-scope merely because one endpoint is Berlin.
@@ -70,7 +75,7 @@ class ScopeBoundaryGuard:
 
     def __init__(self, classifier=None) -> None:
         self.classifier = classifier or create_chat_model(
-            num_predict=192
+            num_predict=128
         ).with_structured_output(ScopeDecision)
 
     def check(
@@ -81,13 +86,21 @@ class ScopeBoundaryGuard:
         origin: str | None = None,
         destination: str | None = None,
         station: str | None = None,
+        travel_area: str | None = None,
+        origin_status: str = "unknown",
+        destination_status: str = "unknown",
+        station_status: str = "unknown",
     ) -> ScopeCheck:
         route_context = (
             "\n\nSTRUCTURED ROUTING FIELDS\n"
             f"intent: {intent or 'unknown'}\n"
             f"origin: {origin or 'missing'}\n"
             f"destination: {destination or 'missing'}\n"
-            f"station: {station or 'missing'}"
+            f"station: {station or 'missing'}\n"
+            f"travel_area: {travel_area or 'missing'}\n"
+            f"origin_status: {origin_status}\n"
+            f"destination_status: {destination_status}\n"
+            f"station_status: {station_status}"
         )
         decision = self.classifier.invoke(
             [

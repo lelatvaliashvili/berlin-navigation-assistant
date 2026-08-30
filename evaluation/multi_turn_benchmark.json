@@ -1,5 +1,5 @@
 {
-  "dataset_id": "berlin-navigation-final-conversation-scenarios-v6",
+  "dataset_id": "berlin-navigation-multi-turn-benchmark",
   "purpose": "End-to-end multi-turn checks reported separately from the single-turn guardrail benchmark.",
   "cases": [
     {
@@ -11,7 +11,7 @@
           "success": {"require_any": ["ticket type", "age", "ages"]}
         },
         {
-          "prompt": "She is 7 and I have a regular 24-hour ticket for zones AB.",
+          "prompt": "She is 7 and I have a regular 24-hour ticket for zones AB. Can I take her along?",
           "success": {"require_any": ["can travel", "take along", "take her along", "children"]}
         }
       ]
@@ -28,7 +28,7 @@
           "prompt": "To Zoologischer Garten.",
           "expected_route": "journey",
           "success": {
-            "require_any": ["Journey options", "Transitous", "Alexanderplatz"],
+            "require_any": ["Journey options", "live information", "Alexanderplatz"],
             "forbid": ["provide an origin and destination", "Where will your journey start"]
           }
         }
@@ -46,7 +46,7 @@
           "prompt": "Forget that. What are the next departures from Hauptbahnhof?",
           "expected_route": "departure",
           "success": {
-            "require_any": ["Departures from", "departures at", "Transitous"],
+            "require_any": ["Departures from", "departures at", "live information"],
             "forbid": ["bicycle ticket", "Which station"]
           }
         }

@@ -106,7 +106,6 @@ class GroundednessGuard:
         evidence: str,
         answer: str,
     ) -> GroundednessResult | None:
-        """Catch a high-impact fare-zone contradiction before LLM judging."""
         question_text = question.casefold()
         evidence_text = evidence.casefold()
         answer_text = answer.casefold()
@@ -213,11 +212,9 @@ class GroundednessGuard:
         answer: str,
         unsupported_claims: list[str],
     ) -> str:
-        """Retain supported content while removing or qualifying unsafe claims."""
         if not official_context.strip():
             return (
-                "I don’t have reliable information to confirm that, so I don’t "
-                "want to guess. Please check BVG’s official service for the "
+                "I don’t have reliable information to confirm that. Please check BVG’s official service for the "
                 "latest answer."
             )
 

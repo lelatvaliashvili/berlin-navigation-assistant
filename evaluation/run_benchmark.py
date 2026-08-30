@@ -6,7 +6,6 @@ import sys
 import time
 from collections import Counter, defaultdict
 from dataclasses import asdict
-from datetime import datetime, timezone
 from pathlib import Path
 from pydantic import BaseModel, Field
 
@@ -20,7 +19,7 @@ from src.models import AssistantResponse
 from src.llm import create_chat_model
 
 
-DATASET_PATH = PROJECT_ROOT / "evaluation" / "scenarios_final.json"
+DATASET_PATH = PROJECT_ROOT / "evaluation" / "single_turn_benchmark.json"
 RESULTS_DIR = PROJECT_ROOT / "evaluation" / "results"
 
 TARGET_RAIL_KWARGS = {
@@ -193,6 +192,11 @@ def run_case(case: dict, variant: str) -> dict:
         "target_trigger_correct": trigger_correct,
         "latency_ms": round(latency_ms, 2),
         "route_correct": response.route == case["decision"]["intent"],
+        "route_decision": (
+            assistant.last_decision.model_dump()
+            if assistant.last_decision is not None
+            else None
+        ),
         "response": serialize(response),
     }
 
@@ -258,9 +262,18 @@ def main() -> None:
         else ("baseline", "fully_guarded")
     )
     rows = []
+    total = len(dataset["cases"]) * len(variants)
+    completed = 0
+    print(f"Running {total} chatbot evaluations...", flush=True)
     for case in dataset["cases"]:
         for variant in variants:
             result = run_case(case, variant)
+            completed += 1
+            print(
+                f"[{completed}/{total}] {variant}: {case['id']} "
+                f"({result['latency_ms']:.0f} ms)",
+                flush=True,
+            )
             rows.append(
                 {
                     "id": case["id"],
@@ -268,7 +281,10 @@ def main() -> None:
                     "slice": case["slice"],
                     "effect_class": case.get("effect_class"),
                     "prompt": case["prompt"],
-                    "gold_source": case.get("gold_source"),
+                    # Keep provenance in reports without exposing it to the
+                    # chatbot.  Active benchmarks call this primary_source;
+                    # the fallback preserves compatibility with older cases.
+                    "gold_source": case.get("primary_source", case.get("gold_source")),
                     **result,
                 }
             )
@@ -309,7 +325,6 @@ def main() -> None:
             if args.ablations
             else "end_to_end_baseline_vs_fully_guarded"
         ),
-        "generated_at": datetime.now(timezone.utc).isoformat(),
         "dataset": {
             "id": dataset["dataset_id"],
             "path": str(DATASET_PATH.relative_to(PROJECT_ROOT)),
@@ -339,9 +354,8 @@ def main() -> None:
     }
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    run_name = "ablations" if args.ablations else "baseline-vs-guarded"
-    path = RESULTS_DIR / f"benchmark-{run_name}-{stamp}.json"
+    run_name = "ablations" if args.ablations else "single-turn-conversations"
+    path = RESULTS_DIR / f"benchmark-{run_name}.json"
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(json.dumps(payload["summary"], indent=2))
     print(f"Saved {path}")
