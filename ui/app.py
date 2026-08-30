@@ -1,4 +1,5 @@
 import sys
+import time
 from pathlib import Path
 
 import streamlit as st
@@ -10,10 +11,19 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from src.chatbot import BVGAssistant
 
 
+def _stream_text(answer: str):
+    """Progressively render the completed answer for a smoother UI."""
+    for token in answer.split(" "):
+        yield token + " "
+        time.sleep(0.01)
+
+
 st.title("Berlin Navigation Assistant")
 
 if "assistant" not in st.session_state:
-    st.session_state.assistant = BVGAssistant()
+    # The interactive demo represents the production-safe configuration.
+    # The evaluation runner separately constructs an unguarded baseline.
+    st.session_state.assistant = BVGAssistant(guarded=True)
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -36,13 +46,12 @@ if prompt := st.chat_input("Ask about Berlin public transport"):
 
     with st.chat_message("assistant"):
         try:
-            with st.spinner("Thinking..."):
-                response = st.session_state.assistant.ask(prompt)
+            response = st.session_state.assistant.ask(prompt)
             answer = response.answer
+            st.write_stream(_stream_text(answer))
         except Exception as exc:
             answer = f"Error: {exc}"
-
-        st.write(answer)
+            st.write(answer)
 
     st.session_state.messages.append(
         {"role": "assistant", "content": answer}

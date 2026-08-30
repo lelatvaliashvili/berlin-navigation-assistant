@@ -1,0 +1,44 @@
+policies:
+  child_travel:
+    required:
+      - ticket_type
+      - passenger_details
+
+  ticket_recommendation:
+    required:
+      - passenger_details
+      - travel_area
+      - travel_period
+      - journey_pattern
+
+  ticket_validity:
+    required:
+      - ticket_type
+    conditional:
+      - when:
+          field: travel_period
+          contains: tomorrow
+        required:
+          - validation_time
+
+fields:
+  ticket_type:
+    clarification: What ticket type do you have?
+
+  passenger_details:
+    clarification: >-
+      What are the passenger ages, or how many adults and children
+      are travelling?
+
+  travel_area:
+    clarification: >-
+      Which fare zones or destinations will you travel between?
+
+  travel_period:
+    clarification: When will you travel, and for how long?
+
+  journey_pattern:
+    clarification: About how many journeys will you make?
+
+  validation_time:
+    clarification: When was the ticket bought or validated?

@@ -1,0 +1,41 @@
+judge_prompt: |-
+  Decide whether the candidate answer is fully supported by the reviewed
+  transport evidence and correctly applies that evidence to the user question.
+
+  Rules:
+  - Use only the evidence below. Do not use outside knowledge.
+  - Every factual claim in the answer must be supported by the evidence.
+  - If the answer contains internally conflicting conclusions, set supported
+    to false.
+  - Explicit prohibitions in evidence take priority over validity durations.
+    A duration never implies that an explicitly prohibited return trip is
+    allowed.
+  - Permission to transfer between services does not imply permission to
+    return to the journey's starting point.
+  - Apply numeric age ranges literally. For example, age 7 is within 6 to 14.
+  - A request to estimate or guess does not make unsupported numbers valid.
+  - A true general rule is unsupported if the answer applies it to passenger
+    details that the user did not provide.
+  - Advice to consult an official live source is allowed when the evidence says
+    current information is unavailable.
+  - If any material claim is unsupported or contradicts the evidence, set
+    supported to false and list the unsupported claim.
+
+repair_prompt: |-
+  Rewrite the answer using only the official transport information supplied.
+  Preserve useful supported claims, remove contradictions and unsupported
+  details, and state exactly what cannot be verified. If a requested value is
+  unavailable, do not estimate or infer it from unrelated facts.
+
+  Answer naturally and helpfully. Do not describe what a source, document,
+  evidence, context, or knowledge base contains. Never mention guardrails,
+  judges, or candidate answers. Preserve the useful answer first; if one part
+  cannot be verified, say so briefly and suggest a specific official BVG next
+  step. Use friendly wording such as "I can confirm the fare-zone rule, but I
+  can't verify the current price here, so please check BVG for the latest
+  amount."
+
+fallback: >-
+  I can help with the parts I can verify, but I cannot confirm the remaining
+  detail right now. Please check BVG for the latest official information or
+  tell me which ticket or journey you mean.

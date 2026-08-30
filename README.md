@@ -1,12 +1,68 @@
 # berlin-navigation-assistant
 
 
+# Setup
+
+The application uses a local Ollama runtime. It requires Python 3.12 (the
+project was tested with Python 3.12.x). 
+
+Install Ollama separately, then install
+the Python dependencies and pull the two models used by the assistant:
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+ollama serve
+ollama pull llama3.1:8b
+ollama pull nomic-embed-text
+```
+
+The demo notebook is available at `notebooks/demo_usage.ipynb`. It runs real
+baseline and fully guarded chatbot calls for a few representative prompts and
+shows the answers and triggered guardrails side by side.
+
+The Streamlit app is an optional, customer-facing conversational window. It
+shows the polished assistant response without exposing guardrail traces.
+
+Demo and results notebooks are to be inspected for details regarding the baseline or guarded path and which safeguards were activated.
+
+Run the Streamlit application with:
+```bash
+streamlit run ui/app.py
+```
+
+For evaluation, run the automated checks with:
+
+```bash
+pytest -q
+python -m evaluation.run_benchmark --judge
+python -m evaluation.run_conversation_benchmark --judge
+```
+
+The evaluation commands make Ollama calls and record results under
+`evaluation/results/`. The live journey/departure examples additionally need
+network access to the Transitous API. Final reports use stable filenames and
+are overwritten by a subsequent run, so copy a report to the archive if you
+want to preserve it before rerunning.
+
+
 # Tools and Libraries
 
- - LangChain Infrastructure for its dedicated ChatOllama integration
- - LangChain's InMemoryVectorStore for cosine-similarity retrieval
- - Domain Specific Validators (Evidence sufficiency, Policy Grounding, Live Data, )
- - Guardrails AI for prompt-injection, jailbreak, PII and output validators
+- **LangChain / `langchain-ollama`**: connects the application to Ollama and
+  provides message, document, text-splitting, and in-memory vector-store
+  abstractions.
+- **Ollama**: runs the local `llama3.1:8b` chat model and `nomic-embed-text`
+  embedding model without an external API key.
+- **Pydantic**: validates structured model output. Router and guardrail
+  decisions must match typed schemas instead of being accepted as arbitrary
+  JSON.
+- **PyYAML**: loads the reviewed completeness and groundedness policies.
+- **httpx**: calls the Transitous live-data API.
+- **Streamlit**: provides the interactive demonstration UI.
+- **Pytest**: runs unit and integration tests.
+- **Pandas**: supports evaluation and notebook analysis.
+
 
 # Knowledge 
 
@@ -20,50 +76,4 @@ The repository includes an offline ingestion pipeline that:
 6. creates drafts requiring human review.
 
 Automatically extracted pages are not inserted directly into the trusted
-knowledge base. Reviewed documents are stored under `knowledge/domain/`
-
-
-# Walkthrough plan
-
-1. Baseline system
-knowledge → RAG retrieves evidence from documents.
-journey → Transitous client works end-to-end to provide information.
-departure → live data works end-to-end.
-other (prompts including unrelated requests and information) → the assistant does not stay in scope
-
-2. Evaluation dataset
-
-run:  
-
-python -m evaluation.run_conversation_scenarios
-  --configuration baseline
-for testing multi-turn conversations 
-
-
-Cateogries in evaluation dataset include: 
-KB-* - source-grounded cases
-AMB-* - critical-context / ambiguity
-INJ-* - adversarial injection
-BCTRL-* - benign instruction controls
-SCOPE-* - domain-boundary cases
-LIVE-* - live-data cases
-
-3. Baseline failures
-4. Guardrail design
-5. Guarded results
-6. Metrics
-7. Latency/cost trade-off
-8. Remaining failures and Future Extensions
-
-
-# Model Config
-
-- Final assistant responses are limited to 256 generated tokens.
-- Router responses are limited to 96 generated tokens.
-- Ollama keeps the model loaded for 30 minutes to reduce repeated model-loading
-  overhead during interactive use and evaluation.
-- Only the latest six conversation messages are included in LLM context.
-- The model context window is limited to 4096 tokens.
-- RAG prompts are kept compact by removing unnecessary formatting and
-  whitespace.
-
+knowledge base. They are saved as Drafts. Reviewed documents are stored under `knowledge/domain/`
